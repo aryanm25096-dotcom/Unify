@@ -2,269 +2,306 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { CheckCircle2, Loader2, FileText, ChevronRight } from 'lucide-react'
-
-// Map of stages
-type Stage = 'describe' | 'review' | 'confirm'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
+import { CheckCircle2, Loader2, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 export default function PostNewProjectPage() {
     const router = useRouter()
-    const [stage, setStage] = useState<Stage>('describe')
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-
-    // Form data
+    const [stage, setStage] = useState<1 | 2 | 3>(1)
+    
+    // Stage 1 State
     const [description, setDescription] = useState('')
-    const [budget, setBudget] = useState<string>('')
+    const [budget, setBudget] = useState('')
+    const [isGenerating, setIsGenerating] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    
+    // Stage 2 State
+    const [plan, setPlan] = useState<any>(null)
+    
+    // Stage 3 State
+    const [isSaving, setIsSaving] = useState(false)
 
-    // Fetched plan
-    const [projectPlan, setProjectPlan] = useState<any>(null)
-
-    const handleAnalyze = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleGenerate = async () => {
+        setIsGenerating(true)
         setError(null)
-
-        if (description.length < 50) {
-            setError('Please provide more detail (at least 50 characters).')
-            return
-        }
-
-        const budgetNum = parseFloat(budget)
-        if (isNaN(budgetNum) || budgetNum <= 0) {
-            setError('Please enter a valid positive budget amount.')
-            return
-        }
-
-        setLoading(true)
-
+        
         try {
-            const response = await fetch('/api/analyze-project', {
+            const res = await fetch('/api/analyze-project', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description, budget: budgetNum })
+                body: JSON.stringify({ 
+                    description, 
+                    budget: parseFloat(budget) 
+                })
             })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to analyze project')
+            
+            const data = await res.json()
+            
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to generate plan')
             }
-
-            setProjectPlan(data)
-            setStage('review')
+            
+            setPlan(data)
+            setStage(2)
         } catch (err: any) {
             setError(err.message)
         } finally {
-            setLoading(false)
+            setIsGenerating(false)
         }
     }
 
-    const handleConfirm = async () => {
-        // Will be implemented in Session 4 (saving to Supabase)
-        setStage('confirm')
+    const handleSave = async () => {
+        setIsSaving(true)
+        setError(null)
+        
+        try {
+            const res = await fetch('/api/projects/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    plan, 
+                    budget: parseFloat(budget) 
+                })
+            })
+            
+            const data = await res.json()
+            
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to save project')
+            }
+            
+            router.push('/dashboard/employer/projects')
+        } catch (err: any) {
+            setError(err.message)
+            setIsSaving(false)
+        }
     }
 
-    const StageIndicator = () => (
-        <div className="flex items-center justify-center space-x-4 mb-8">
-            <div className={`flex items-center \${stage === 'describe' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 \${stage === 'describe' ? 'bg-indigo-100' : 'bg-slate-100'}`}>1</div>
-                Describe
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-300" />
-            <div className={`flex items-center \${stage === 'review' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 \${stage === 'review' ? 'bg-indigo-100' : 'bg-slate-100'}`}>2</div>
-                Review Plan
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-300" />
-            <div className={`flex items-center \${stage === 'confirm' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 \${stage === 'confirm' ? 'bg-indigo-100' : 'bg-slate-100'}`}>3</div>
-                Confirm & Fund
-            </div>
-        </div>
-    )
-
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Post New Project</h1>
-            <p className="text-slate-500">Let our AI assist you in breaking down your project into actionable milestones.</p>
+        <div className="container max-w-4xl mx-auto py-10 space-y-8">
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-8">
+                <Link href="/dashboard/employer" className="hover:text-foreground flex items-center">
+                    <ArrowLeft className="w-4 h-4 mr-1" /> Dashboard
+                </Link>
+                <span>/</span>
+                <span className="text-foreground font-medium">Post New Project</span>
+            </div>
 
-            <StageIndicator />
+            {/* Stages Indicator */}
+            <div className="flex items-center justify-between mb-8 overflow-hidden rounded-full border bg-muted/50 p-1">
+                {[1, 2, 3].map((s, i) => (
+                    <div 
+                        key={s} 
+                        className={`flex-1 text-center py-2 text-sm font-medium rounded-full transition-colors ${
+                            stage === s 
+                                ? 'bg-background shadow-sm text-primary' 
+                                : stage > s 
+                                    ? 'text-primary' 
+                                    : 'text-muted-foreground'
+                        }`}
+                    >
+                        {i + 1}. {['Describe', 'Review Plan', 'Confirm & Fund'][i]}
+                    </div>
+                ))}
+            </div>
 
-            {/* STAGE 1: Describe */}
-            {stage === 'describe' && (
-                <Card className="border-0 shadow-sm ring-1 ring-slate-200">
-                    <CardHeader>
-                        <CardTitle>Project Details</CardTitle>
-                        <CardDescription>
-                            Describe what you want to build in plain English. The more detail you provide, the better the AI can plan it out.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form id="describe-form" onSubmit={handleAnalyze} className="space-y-6">
-                            {error && (
-                                <div className="bg-red-50 text-red-600 text-sm p-4 rounded-md border border-red-200">
-                                    {error}
-                                </div>
-                            )}
-
-                            <div className="space-y-2">
-                                <Label htmlFor="description">Describe your project in detail</Label>
-                                <Textarea
-                                    id="description"
-                                    placeholder="e.g. I need a mobile app for booking hair salon appointments. Users should be able to browse stylists, book slots, pay online, and get reminders..."
-                                    className="min-h-[200px] resize-y"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    disabled={loading}
-                                />
-                                <p className="text-xs text-slate-500 text-right">{description.length} characters (min 50)</p>
-                            </div>
-
-                            <div className="space-y-2 max-w-xs">
-                                <Label htmlFor="budget">Total project budget (USD)</Label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-2.5 text-slate-500">$</span>
-                                    <Input
-                                        id="budget"
-                                        type="number"
-                                        min="1"
-                                        step="0.01"
-                                        placeholder="5000"
-                                        className="pl-8"
-                                        value={budget}
-                                        onChange={(e) => setBudget(e.target.value)}
-                                        disabled={loading}
-                                    />
-                                </div>
-                            </div>
-                        </form>
-                    </CardContent>
-                    <CardFooter className="flex justify-end border-t px-6 py-4 bg-slate-50 rounded-b-xl">
-                        <Button
-                            form="describe-form"
-                            type="submit"
-                            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 min-w-[200px]"
-                            disabled={loading || description.length < 50 || !budget}
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Analyzing Project...
-                                </>
-                            ) : (
-                                'Generate Project Plan'
-                            )}
-                        </Button>
-                    </CardFooter>
-                </Card>
+            {error && (
+                <div className="bg-destructive/10 text-destructive p-4 rounded-md text-sm mb-6">
+                    {error}
+                </div>
             )}
 
-            {/* STAGE 2: Review */}
-            {stage === 'review' && projectPlan && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <Card className="border-0 shadow-sm ring-1 ring-slate-200 bg-indigo-50/50">
+            {/* STAGE 1: Describe */}
+            {stage === 1 && (
+                <div className="space-y-6">
+                    <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center">
-                                <FileText className="w-5 h-5 mr-2 text-indigo-600" />
-                                {projectPlan.title}
-                            </CardTitle>
-                            <CardDescription className="text-slate-700">
-                                {projectPlan.summary}
+                            <CardTitle>Describe your project in detail</CardTitle>
+                            <CardDescription>
+                                The more detail you provide, the better our AI can structure your milestones.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="flex gap-6 text-sm">
-                            <div className="bg-white px-4 py-2 rounded-md ring-1 ring-slate-200">
-                                <span className="text-slate-500 block text-xs uppercase tracking-wider font-semibold mb-1">Complexity</span>
-                                <span className="font-medium capitalize">{projectPlan.complexity}</span>
-                            </div>
-                            <div className="bg-white px-4 py-2 rounded-md ring-1 ring-slate-200">
-                                <span className="text-slate-500 block text-xs uppercase tracking-wider font-semibold mb-1">Est. Time</span>
-                                <span className="font-medium">{projectPlan.estimated_hours} hours</span>
-                            </div>
-                            <div className="bg-white px-4 py-2 rounded-md ring-1 ring-slate-200">
-                                <span className="text-slate-500 block text-xs uppercase tracking-wider font-semibold mb-1">Total Budget</span>
-                                <span className="font-medium">\${parseFloat(budget).toLocaleString()}</span>
+                        <CardContent className="space-y-4">
+                            <Textarea 
+                                placeholder="e.g. I need a mobile app for booking hair salon appointments. Users should be able to browse stylists, book slots, pay online, and get reminders..." 
+                                className="min-h-[200px]"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                disabled={isGenerating}
+                            />
+                            
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Total project budget (USD)</label>
+                                <Input 
+                                    type="number" 
+                                    placeholder="3000" 
+                                    value={budget}
+                                    onChange={(e) => setBudget(e.target.value)}
+                                    disabled={isGenerating}
+                                />
                             </div>
                         </CardContent>
+                        <CardFooter>
+                            <Button 
+                                onClick={handleGenerate} 
+                                className="w-full" 
+                                disabled={isGenerating || description.length < 50 || !budget}
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        AI is analyzing your project...
+                                    </>
+                                ) : 'Generate Project Plan'}
+                            </Button>
+                        </CardFooter>
                     </Card>
 
-                    <h3 className="text-lg font-semibold text-slate-900 mt-8 mb-4">Proposed Milestones</h3>
+                    {isGenerating && (
+                        <div className="space-y-4 animate-pulse">
+                            <Skeleton className="h-8 w-[200px]" />
+                            <Skeleton className="h-[200px] w-full" />
+                            <Skeleton className="h-[100px] w-full" />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* STAGE 2: Review Plan */}
+            {stage === 2 && plan && (
+                <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h2 className="text-3xl font-bold">{plan.title}</h2>
+                            <p className="text-muted-foreground mt-2">{plan.summary}</p>
+                        </div>
+                        <Badge variant={plan.complexity === 'high' ? 'destructive' : plan.complexity === 'medium' ? 'default' : 'secondary'} className="text-sm uppercase">
+                            {plan.complexity} Complexity
+                        </Badge>
+                    </div>
+
+                    <div className="bg-muted p-4 rounded-lg flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Estimated Effort</p>
+                            <p className="text-xl font-bold">{plan.estimated_hours} Hours</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Total Budget</p>
+                            <p className="text-xl font-bold">${budget}</p>
+                        </div>
+                    </div>
+
                     <div className="space-y-4">
-                        {projectPlan.milestones.map((milestone: any, index: number) => (
-                            <Card key={index} className="border-0 shadow-sm ring-1 ring-slate-200">
-                                <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
+                        <h3 className="text-xl font-semibold">Milestones</h3>
+                        {plan.milestones.map((m: any, idx: number) => (
+                            <Card key={idx} className="overflow-hidden border-l-4" style={{borderLeftColor: 'hsl(var(--primary))'}}>
+                                <CardHeader className="bg-muted/30 pb-4">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1">
-                                                Milestone {milestone.order}
-                                            </div>
-                                            <CardTitle className="text-lg">{milestone.title}</CardTitle>
+                                            <CardDescription className="font-semibold text-primary uppercase tracking-wider mb-1">
+                                                Milestone {m.order}
+                                            </CardDescription>
+                                            <CardTitle className="text-lg">{m.title}</CardTitle>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-lg font-bold text-slate-900">
-                                                \${milestone.payment_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </div>
-                                            <div className="text-xs text-slate-500">
-                                                {milestone.payment_percentage}% of budget
-                                            </div>
+                                        <div className="text-right text-sm">
+                                            <div className="font-semibold text-lg">${m.payment_amount.toFixed(2)}</div>
+                                            <div className="text-muted-foreground">({m.payment_percentage}%)</div>
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="pt-4">
-                                    <p className="text-slate-600 mb-4">{milestone.description}</p>
-
-                                    <div className="space-y-3">
-                                        <h4 className="text-sm font-semibold text-slate-900">Success Criteria:</h4>
+                                <CardContent className="pt-4 space-y-4">
+                                    <p className="text-sm">{m.description}</p>
+                                    
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">Success Criteria:</p>
                                         <ul className="space-y-2">
-                                            {milestone.success_criteria.map((criteria: string, idx: number) => (
-                                                <li key={idx} className="flex items-start text-sm text-slate-600">
-                                                    <CheckCircle2 className="w-4 h-4 text-emerald-500 mr-2 mt-0.5 shrink-0" />
-                                                    <span>{criteria}</span>
+                                            {m.success_criteria.map((criteria: string, cIdx: number) => (
+                                                <li key={cIdx} className="flex items-start">
+                                                    <Checkbox className="mt-1 mr-2" disabled />
+                                                    <span className="text-sm text-muted-foreground">{criteria}</span>
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
-
-                                    <div className="flex items-center text-xs text-slate-500 mt-6 pt-4 border-t border-slate-100">
-                                        ⏱ {milestone.estimated_hours} hours est. work • 📅 Due in {milestone.deadline_days} days
+                                    
+                                    <div className="flex items-center text-sm text-muted-foreground bg-muted/50 p-2 rounded w-fit">
+                                        <span className="font-medium mr-2">Target Deadline:</span> Day {m.deadline_days}
                                     </div>
                                 </CardContent>
                             </Card>
                         ))}
                     </div>
 
-                    <div className="flex justify-between pt-6 border-t">
-                        <Button variant="outline" onClick={() => setStage('describe')}>
-                            Edit Description
+                    <div className="flex space-x-4 pt-4">
+                        <Button variant="outline" className="flex-1" onClick={() => setStage(1)}>
+                            Regenerate Plan
                         </Button>
-                        <Button onClick={handleConfirm} className="bg-indigo-600 hover:bg-indigo-700">
-                            Confirm & Proceed to Funding
+                        <Button className="flex-1" onClick={() => setStage(3)}>
+                            Looks Good, Continue
                         </Button>
                     </div>
                 </div>
             )}
 
-            {/* STAGE 3: Confirm (Placeholder) */}
-            {stage === 'confirm' && (
-                <Card className="border-0 shadow-sm ring-1 ring-emerald-200 bg-emerald-50 text-center py-12">
-                    <CardContent>
-                        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">Plan Confirmed!</h3>
-                        <p className="text-slate-600 max-w-sm mx-auto mb-6">
-                            To be implemented in Session 4: Saving this plan to the database and integrating Stripe Connect for escrow funding.
-                        </p>
-                        <Button variant="outline" onClick={() => router.push('/dashboard/employer')}>
-                            Return to Dashboard
-                        </Button>
-                    </CardContent>
-                </Card>
+            {/* STAGE 3: Confirm & Fund */}
+            {stage === 3 && plan && (
+                <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Confirm & Lock Funds</CardTitle>
+                            <CardDescription>
+                                Review your project summary before creating it.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="bg-muted/50 p-4 rounded-lg">
+                                <h3 className="font-semibold mb-2">{plan.title}</h3>
+                                <p className="text-sm text-muted-foreground mb-4">{plan.summary}</p>
+                                
+                                <div className="space-y-2 border-t pt-4">
+                                    {plan.milestones.map((m: any, idx: number) => (
+                                        <div key={idx} className="flex justify-between text-sm">
+                                            <span>Milestone {m.order}: {m.title}</span>
+                                            <span className="font-medium">${m.payment_amount.toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                    <div className="flex justify-between text-base font-bold border-t pt-2 mt-2">
+                                        <span>Total Budget</span>
+                                        <span>${parseFloat(budget).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center text-amber-600 bg-amber-50 dark:bg-amber-900/10 p-4 rounded-lg">
+                                <CheckCircle2 className="w-5 h-5 mr-3 shrink-0" />
+                                <p className="text-sm">
+                                    Funds will be held securely until each milestone is approved. 
+                                    Stripe payment integration will be activated in the next phase.
+                                </p>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex-col items-stretch space-y-3">
+                            <Button 
+                                onClick={handleSave} 
+                                disabled={isSaving}
+                                className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                            >
+                                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                Post Project & Lock Funds
+                            </Button>
+                            <Button variant="ghost" onClick={() => setStage(2)}>
+                                Go Back
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </div>
             )}
         </div>
     )

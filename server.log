@@ -1,0 +1,17 @@
+
+> unify@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1085ms
+ ✓ Compiled /middleware in 278ms (168 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (140kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ○ Compiling /dashboard/employer/projects/new ...
+ ✓ Compiled /dashboard/employer/projects/new in 836ms (804 modules)
+ GET /dashboard/employer/projects/new 200 in 1273ms
+ ✓ Compiled /api/analyze-project in 139ms (493 modules)
+ POST /api/analyze-project 200 in 16514ms

@@ -15,6 +15,38 @@ export default async function EmployerDashboardPage() {
 
     const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'
 
+    // Fetch all projects for this employer with their milestones and payments
+    const { data: projects } = await supabase
+        .from('projects')
+        .select(`
+            id,
+            status,
+            milestones (
+                status,
+                payments (
+                    amount,
+                    status
+                )
+            )
+        `)
+        .eq('employer_id', user?.id)
+
+    let activeCount = 0;
+    let pendingCount = 0;
+    let totalSpent = 0;
+
+    projects?.forEach((p: any) => {
+        if (p.status === 'active') activeCount++;
+        p.milestones?.forEach((m: any) => {
+            if (m.status === 'submitted') pendingCount++;
+            m.payments?.forEach((pay: any) => {
+                if (pay.status === 'released') {
+                    totalSpent += Number(pay.amount);
+                }
+            });
+        });
+    });
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div>
@@ -30,7 +62,7 @@ export default async function EmployerDashboardPage() {
                         <Activity className="h-4 w-4 text-slate-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold">0</div>
+                        <div className="text-3xl font-bold">{activeCount}</div>
                     </CardContent>
                 </Card>
 
@@ -40,7 +72,7 @@ export default async function EmployerDashboardPage() {
                         <DollarSign className="h-4 w-4 text-slate-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold">$0.00</div>
+                        <div className="text-3xl font-bold">${totalSpent.toFixed(2)}</div>
                     </CardContent>
                 </Card>
 
@@ -50,17 +82,19 @@ export default async function EmployerDashboardPage() {
                         <Clock className="h-4 w-4 text-slate-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold">0</div>
+                        <div className="text-3xl font-bold">{pendingCount}</div>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="h-96 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-500">
-                <div className="text-center">
-                    <h3 className="font-semibold text-lg text-slate-700">No active projects</h3>
-                    <p className="text-sm text-slate-500 max-w-sm mt-1">Get started by creating a new project and hiring AI-vetted freelancers.</p>
+            {projects && projects.length === 0 ? (
+                <div className="h-96 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-500">
+                    <div className="text-center">
+                        <h3 className="font-semibold text-lg text-slate-700">No active projects</h3>
+                        <p className="text-sm text-slate-500 max-w-sm mt-1">Get started by creating a new project and hiring AI-vetted freelancers.</p>
+                    </div>
                 </div>
-            </div>
+            ) : null}
         </div>
     )
 }

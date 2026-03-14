@@ -1,0 +1,44 @@
+import Link from 'next/link'
+import { Briefcase, FolderCheck, DollarSign, Target, Settings } from 'lucide-react'
+
+export default function FreelancerLayout({
+    children,
+}: {
+    children: React.ReactNode
+}) {
+    return (
+        <div className="flex h-[calc(100vh-4rem)]">
+            {/* Sidebar */}
+            <aside className="w-64 border-r bg-white h-full hidden shrink-0 md:block">
+                <nav className="p-4 space-y-1">
+                    <Link href="/dashboard/freelancer" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-slate-100 text-slate-900 font-medium">
+                        <Briefcase className="h-5 w-5 text-indigo-600" />
+                        <span>Available Projects</span>
+                    </Link>
+                    <Link href="/dashboard/freelancer/work" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition-colors">
+                        <FolderCheck className="h-5 w-5 text-slate-400" />
+                        <span>My Work</span>
+                    </Link>
+                    <Link href="/dashboard/freelancer/earnings" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition-colors">
+                        <DollarSign className="h-5 w-5 text-slate-400" />
+                        <span>Earnings</span>
+                    </Link>
+                    <Link href="/dashboard/freelancer/pfi" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition-colors">
+                        <Target className="h-5 w-5 text-slate-400" />
+                        <span>PFI Score</span>
+                    </Link>
+                    <Link href="/dashboard/freelancer/settings" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition-colors">
+                        <Settings className="h-5 w-5 text-slate-400" />
+                        <span>Settings</span>
+                    </Link>
+                </nav>
+            </aside>
+
+            <main className="flex-1 overflow-y-auto w-full p-8">
+                <div className="max-w-6xl mx-auto">
+                    {children}
+                </div>
+            </main>
+        </div>
+    )
+}
